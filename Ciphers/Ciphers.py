@@ -105,6 +105,98 @@ class VigenereCipher(CaesarCipher):
         return self._processed
 
 
+class PlayfairCipher:
+    def __init__(self, key):
+        self.key = key.lower().replace('j', 'i')
+        self.key_matrix = self.generate_key_matrix(self.key)
+
+    def generate_key_matrix(self, key):
+        key_matrix = []
+        used_chars = set()
+
+        # Add key characters to the matrix
+        for char in key:
+            if char not in used_chars:
+                key_matrix.append(char)
+                used_chars.add(char)
+
+        # Add the rest of the alphabet to the matrix
+        for char in 'abcdefghiklmnopqrstuvwxyz':  # note: 'j' is omitted as it's combined with 'i'
+            if char not in used_chars:
+                key_matrix.append(char)
+                used_chars.add(char)
+
+        # Convert the list to a 5x5 matrix
+        return [key_matrix[i:i + 5] for i in range(0, 25, 5)]
+
+    def preprocess_text(self, text):
+        text = text.lower().replace('j', 'i').replace(" ",
+                                                      "")  # Preprocess text: lower case, replace 'j', remove spaces
+        cleaned_text = []
+
+        # Insert 'x' between duplicate letters and handle odd length
+        i = 0
+        while i < len(text):
+            char = text[i]
+            if i + 1 < len(text) and text[i] == text[i + 1]:
+                cleaned_text.append(char)
+                cleaned_text.append('x')
+                i += 1
+            else:
+                cleaned_text.append(char)
+                i += 1
+
+        if len(cleaned_text) % 2 != 0:
+            cleaned_text.append('x')
+
+        return ''.join(cleaned_text)
+
+    def find_position(self, char):
+        for i, row in enumerate(self.key_matrix):
+            if char in row:
+                return i, row.index(char)
+        return None
+
+    def encrypt_pair(self, a, b):
+        row_a, col_a = self.find_position(a)
+        row_b, col_b = self.find_position(b)
+
+        if row_a == row_b:
+            return self.key_matrix[row_a][(col_a + 1) % 5] + self.key_matrix[row_b][(col_b + 1) % 5]
+        elif col_a == col_b:
+            return self.key_matrix[(row_a + 1) % 5][col_a] + self.key_matrix[(row_b + 1) % 5][col_b]
+        else:
+            return self.key_matrix[row_a][col_b] + self.key_matrix[row_b][col_a]
+
+    def encrypt(self, plaintext):
+        prepared_text = self.preprocess_text(plaintext)
+        ciphertext = []
+
+        for i in range(0, len(prepared_text), 2):
+            a, b = prepared_text[i], prepared_text[i + 1]
+            ciphertext.append(self.encrypt_pair(a, b))
+
+        return ''.join(ciphertext)
+
+    def display_key_matrix(self):
+        for row in self.key_matrix:
+            print(' '.join(row))
+
+
+def playfair_example():
+    # Usage example
+    key = "samplekey"
+    plaintext = "hide the gold in the tree stump"
+
+    cipher = PlayfairCipher(key)
+    ciphertext = cipher.encrypt(plaintext)
+
+    print("Key Matrix:")
+    cipher.display_key_matrix()
+    print(f"\nPrepared Text: {cipher.preprocess_text(plaintext)}")
+    print(f"Ciphertext: {ciphertext}")
+
+
 def Rot13_test():
     scrambled = Rot13('Andrew MCSPARROn &').processed
     print(scrambled)
