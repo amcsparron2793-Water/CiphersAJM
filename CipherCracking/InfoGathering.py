@@ -31,7 +31,10 @@ class CipherCrackingBase:
                 self._letter_count[char] = self.input_str.count(char)
         return self._letter_count
 
+    @property
+    def most_common_symbol(self):
+        return [x for x in self.sym_count.items() if x[1] == max(self.sym_count.values())]
+
 
 if __name__ == '__main__':
     ccb = CipherCrackingBase(candidate_string)
-    print([x for x in ccb.sym_count.items() if x[1] == max(ccb.sym_count.values())])
