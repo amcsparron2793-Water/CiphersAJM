@@ -252,16 +252,16 @@ class PlayfairCipher(EncryptionBaseClass):
             by encrypting pairs of characters using the `_encrypt_pair` method.
         :rtype: str
         """
-        ciphertext = []
+        new_text = []
 
         for i in range(0, len(self._preprocessed_text), 2):
             a, b = self._preprocessed_text[i], self._preprocessed_text[i + 1]
             if self.mode == self.ENCRYPT:
-                ciphertext.append(self._encrypt_pair(a, b))
+                new_text.append(self._encrypt_pair(a, b))
             elif self.mode == self.DECRYPT:
-                ciphertext.append(self._decrypt_pair(a, b))
+                new_text.append(self._decrypt_pair(a, b))
 
-        return ''.join(ciphertext)
+        return ''.join(new_text)
 
     def display_key_matrix(self):
         """
