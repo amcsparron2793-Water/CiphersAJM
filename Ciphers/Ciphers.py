@@ -76,7 +76,7 @@ class VigenereCipher(CaesarCipher):
         self.key = key
         self.mod_number = len(self.key)
         if shift_amount != 0:
-           self.shift_amount = 0
+            self.shift_amount = 0
         else:
             self.shift_amount = shift_amount
         self._shift_list: list = []
@@ -94,7 +94,7 @@ class VigenereCipher(CaesarCipher):
                 print(self.shift_amount)
                 # FIXME: this will just shift the key itself - this should be a letter from self.original_input_string
                 self.input_str = k.lower()
-                print(self.input_str, super().processed)#.fget(self))
+                print(self.input_str, super().processed)  #.fget(self))
                 final_list.append(super().processed)
 
             elif k == ' ':
@@ -105,6 +105,200 @@ class VigenereCipher(CaesarCipher):
         return self._processed
 
 
+class PlayfairCipher(EncryptionBaseClass):
+    """
+    Class to implement the Playfair cipher encryption algorithm.
+
+    The PlayfairCipher class inherits from EncryptionBaseClass and is used for encrypting text
+    using the Playfair cipher technique.
+
+    - Alphabet: A string containing the lowercase alphabet excluding the letter 'j'.
+    - Key: The encryption key provided by the user, converted to lowercase with 'j' replaced by 'i'.
+    - Key Matrix: A 5x5 matrix generated based on the key provided and the alphabet.
+    - Processed: A property that returns the encrypted plaintext using the Playfair cipher.
+    - Preprocess Text: Method to preprocess the input text by converting to lowercase, replacing 'j' with 'i',
+        and removing spaces. Inserts 'x' between duplicate letters and ensures even length.
+    - Generate Key Matrix: Method to generate the key matrix used for encryption.
+    - Find Position: Method to find the row and column position of a character within the key matrix.
+    - Encrypt Pair: Method to encrypt a pair of characters using the Playfair cipher technique.
+    - Encrypt Plaintext: Method to encrypt the preprocessed text using the Playfair cipher.
+    - Display Key Matrix: Method to display the key matrix in a 5x5 grid format.
+    """
+    alphabet = string.ascii_lowercase.replace('j', '')
+    ENCRYPT = 'encrypt'
+    DECRYPT = 'decrypt'
+    MODES = [ENCRYPT, DECRYPT]
+
+    def __init__(self, key, input_str: str, mode='encrypt'):
+        super().__init__(input_str)
+        self._mode = mode
+
+        self.key = key.lower().replace('j', 'i')
+        self.key_matrix = self.generate_key_matrix(self.key)
+        self._preprocessed_text = self._preprocess_text()
+
+    @property
+    def mode(self):
+        if self._mode.lower() not in self.MODES:
+            raise AttributeError('Invalid mode')
+        return self._mode.lower()
+
+    @mode.setter
+    def mode(self, value):
+        if value.lower() != self.mode:
+            self.input_str = self.processed
+            self._preprocessed_text = self._preprocess_text()
+        self._mode = value.lower()
+
+    @property
+    def processed(self):
+        """
+        :return: Returns the encrypted plaintext processed by the _encrypt_plaintext method.
+        :rtype: str
+        """
+        return self._encrypt_decrypt_text()
+
+    def generate_key_matrix(self, key):
+        """
+        :param key: The key used to generate the key matrix.
+        :type key: str
+        :return: A 5x5 matrix generated based on the key and the remaining characters of the alphabet.
+        :rtype: list
+        """
+        key_matrix = []
+        used_chars = set()
+
+        # Add key characters to the matrix
+        for char in key:
+            if char not in used_chars:
+                key_matrix.append(char)
+                used_chars.add(char)
+
+        # Add the rest of the alphabet to the matrix
+        for char in self.alphabet:  # note: 'j' is omitted as it's combined with 'i'
+            if char not in used_chars:
+                key_matrix.append(char)
+                used_chars.add(char)
+
+        # Convert the list to a 5x5 matrix
+        return [key_matrix[i:i + 5] for i in range(0, 25, 5)]
+
+    def _preprocess_text(self):
+        """
+        :return: Preprocessed text with lower case, 'j' replaced by 'i', spaces removed,
+            and 'x' inserted between duplicate letters.
+        :rtype: str
+        """
+        # Preprocess text: lower case, replace 'j', remove spaces
+        text = self.input_str.lower().replace('j', 'i').replace(" ", "")
+        cleaned_text = []
+
+        # Insert 'x' between duplicate letters and handle odd length
+        i = 0
+        while i < len(text):
+            char = text[i]
+            if i + 1 < len(text) and text[i] == text[i + 1]:
+                cleaned_text.append(char)
+                cleaned_text.append('x')
+                i += 1
+            else:
+                cleaned_text.append(char)
+                i += 1
+
+        if len(cleaned_text) % 2 != 0:
+            cleaned_text.append('x')
+        self._preprocessed_text = ''.join(cleaned_text)
+        return self._preprocessed_text
+
+    def find_position(self, char):
+        """
+        :param char: The character to find the position of in the key matrix.
+        :type char: str
+        :return: Returns a tuple containing the row and column index of the character in the key matrix if found,
+            otherwise None.
+        :rtype: tuple(int, int) or None
+        """
+        for i, row in enumerate(self.key_matrix):
+            if char in row:
+                return i, row.index(char)
+        return None
+
+    def _encrypt_decrypt_pair(self, a, b, step):
+        """
+        :param a: character to encrypt
+        :type a: str
+        :param b: character to encrypt
+        :type b: str
+        :return: the encrypted pair of characters
+        :rtype: str
+        """
+        row_a, col_a = self.find_position(a)
+        row_b, col_b = self.find_position(b)
+
+        if row_a == row_b:
+            return self.key_matrix[row_a][(col_a + step) % 5] + self.key_matrix[row_b][(col_b + step) % 5]
+        elif col_a == col_b:
+            return self.key_matrix[(row_a + step) % 5][col_a] + self.key_matrix[(row_b + step) % 5][col_b]
+        else:
+            return self.key_matrix[row_a][col_b] + self.key_matrix[row_b][col_a]
+
+    def _encrypt_decrypt_text(self):
+        """
+        :return: The encrypted version of the provided plaintext
+            by encrypting pairs of characters using the `_encrypt_pair` method.
+        :rtype: str
+        """
+        new_text = []
+
+        for i in range(0, len(self._preprocessed_text), 2):
+            a, b = self._preprocessed_text[i], self._preprocessed_text[i + 1]
+            if self.mode == self.ENCRYPT:
+                new_text.append(self._encrypt_decrypt_pair(a, b, 1))
+            elif self.mode == self.DECRYPT:
+                new_text.append(self._encrypt_decrypt_pair(a, b, -1))  # self._decrypt_pair(a, b))
+
+        return ''.join(new_text)
+
+    def display_key_matrix(self):
+        """
+        Display the contents of the key matrix in the console.
+
+        :return: None
+        :rtype: None
+        """
+        for row in self.key_matrix:
+            print(' '.join(row))
+
+
+def playfair_example():
+    def example_encrypt():
+        cipher.mode = 'encrypt'
+        ctext = cipher.processed
+        example_print(ctext)
+
+    def example_decrypt():
+        cipher.mode = 'decrypt'
+        ptext = cipher.processed
+        example_print(ptext)
+
+    def example_print(ciphertext):
+        print("Key Matrix:")
+        cipher.display_key_matrix()
+        # noinspection PyProtectedMember
+        print(f"\nPrepared Text: {cipher._preprocessed_text}")
+        print(f"Ciphertext: {ciphertext}")
+
+    # Usage example
+    test_ciphertext = "idndriydtafdondbntbudenzpl"
+    test_plaintext = "hide the gold in the tree stump"
+    key = "samplekey"
+    input_text = test_plaintext
+
+    cipher = PlayfairCipher(key, input_text, mode='encrypt')
+    example_encrypt()
+    example_decrypt()
+
+
 def Rot13_test():
     scrambled = Rot13('Andrew MCSPARROn &').processed
     print(scrambled)
@@ -113,6 +307,7 @@ def Rot13_test():
 
 
 if __name__ == '__main__':
+    playfair_example()
     #Rot13_test()
     #print(CaesarCipher('Andrew', 1).processed)
-    print(VigenereCipher('OCULORHINOLARINGOLOGY', 'attacking tonight').processed)
+    # print(VigenereCipher('OCULORHINOLARINGOLOGY', 'attacking tonight').processed)
