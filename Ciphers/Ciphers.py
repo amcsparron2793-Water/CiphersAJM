@@ -143,13 +143,20 @@ class PlayfairCipher(EncryptionBaseClass):
             raise AttributeError('Invalid mode')
         return self._mode.lower()
 
+    @mode.setter
+    def mode(self, value):
+        if value.lower() != self.mode:
+            self.input_str = self.processed
+            self._preprocessed_text = self._preprocess_text()
+        self._mode = value.lower()
+
     @property
     def processed(self):
         """
         :return: Returns the encrypted plaintext processed by the _encrypt_plaintext method.
         :rtype: str
         """
-        return self._decrypt_encrypt_text()
+        return self._encrypt_decrypt_text()
 
     def generate_key_matrix(self, key):
         """
@@ -216,7 +223,7 @@ class PlayfairCipher(EncryptionBaseClass):
                 return i, row.index(char)
         return None
 
-    def _encrypt_pair(self, a, b):
+    def _encrypt_decrypt_pair(self, a, b, step):
         """
         :param a: character to encrypt
         :type a: str
@@ -229,24 +236,13 @@ class PlayfairCipher(EncryptionBaseClass):
         row_b, col_b = self.find_position(b)
 
         if row_a == row_b:
-            return self.key_matrix[row_a][(col_a + 1) % 5] + self.key_matrix[row_b][(col_b + 1) % 5]
+            return self.key_matrix[row_a][(col_a + step) % 5] + self.key_matrix[row_b][(col_b + step) % 5]
         elif col_a == col_b:
-            return self.key_matrix[(row_a + 1) % 5][col_a] + self.key_matrix[(row_b + 1) % 5][col_b]
+            return self.key_matrix[(row_a + step) % 5][col_a] + self.key_matrix[(row_b + step) % 5][col_b]
         else:
             return self.key_matrix[row_a][col_b] + self.key_matrix[row_b][col_a]
 
-    def _decrypt_pair(self, a, b):
-        row_a, col_a = self.find_position(a)
-        row_b, col_b = self.find_position(b)
-
-        if row_a == row_b:
-            return self.key_matrix[row_a][(col_a - 1) % 5] + self.key_matrix[row_b][(col_b - 1) % 5]
-        elif col_a == col_b:
-            return self.key_matrix[(row_a - 1) % 5][col_a] + self.key_matrix[(row_b - 1) % 5][col_b]
-        else:
-            return self.key_matrix[row_a][col_b] + self.key_matrix[row_b][col_a]
-
-    def _decrypt_encrypt_text(self):
+    def _encrypt_decrypt_text(self):
         """
         :return: The encrypted version of the provided plaintext
             by encrypting pairs of characters using the `_encrypt_pair` method.
@@ -257,9 +253,9 @@ class PlayfairCipher(EncryptionBaseClass):
         for i in range(0, len(self._preprocessed_text), 2):
             a, b = self._preprocessed_text[i], self._preprocessed_text[i + 1]
             if self.mode == self.ENCRYPT:
-                new_text.append(self._encrypt_pair(a, b))
+                new_text.append(self._encrypt_decrypt_pair(a, b, 1))
             elif self.mode == self.DECRYPT:
-                new_text.append(self._decrypt_pair(a, b))
+                new_text.append(self._encrypt_decrypt_pair(a, b, -1))  # self._decrypt_pair(a, b))
 
         return ''.join(new_text)
 
@@ -275,18 +271,32 @@ class PlayfairCipher(EncryptionBaseClass):
 
 
 def playfair_example():
+    def example_encrypt():
+        cipher.mode = 'encrypt'
+        ctext = cipher.processed
+        example_print(ctext)
+
+    def example_decrypt():
+        cipher.mode = 'decrypt'
+        ptext = cipher.processed
+        example_print(ptext)
+
+    def example_print(ciphertext):
+        print("Key Matrix:")
+        cipher.display_key_matrix()
+        # noinspection PyProtectedMember
+        print(f"\nPrepared Text: {cipher._preprocessed_text}")
+        print(f"Ciphertext: {ciphertext}")
+
     # Usage example
+    test_ciphertext = "idndriydtafdondbntbudenzpl"
+    test_plaintext = "hide the gold in the tree stump"
     key = "samplekey"
-    plaintext = "hide the gold in the tree stump"
+    input_text = test_plaintext
 
-    cipher = PlayfairCipher(key, plaintext)
-    ciphertext = cipher.processed
-
-    print("Key Matrix:")
-    cipher.display_key_matrix()
-    # noinspection PyProtectedMember
-    print(f"\nPrepared Text: {cipher._preprocessed_text}")
-    print(f"Ciphertext: {ciphertext}")
+    cipher = PlayfairCipher(key, input_text, mode='encrypt')
+    example_encrypt()
+    example_decrypt()
 
 
 def Rot13_test():
